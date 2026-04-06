@@ -6,8 +6,9 @@
 import React from 'react'
 import {
   View, Text, TouchableOpacity, ScrollView,
-  StyleSheet, SafeAreaView, Alert,
+  StyleSheet, Alert,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/constants/theme'
@@ -69,7 +70,7 @@ export default function ProfileScreen() {
   // Guest view
   if (isGuest) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={['top']}>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.guestHero}>
             <Text style={styles.guestEmoji}>🐾</Text>
@@ -106,7 +107,7 @@ export default function ProfileScreen() {
 
   // Logged-in view
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         {/* Avatar + email */}
         <View style={styles.avatarSection}>

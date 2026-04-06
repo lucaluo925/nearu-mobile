@@ -7,10 +7,11 @@
     "icon": "./assets/images/icon.png",
     "scheme": "nearu",
     "userInterfaceStyle": "light",
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#F59E0B"
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
@@ -24,9 +25,12 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#F59E0B"
       },
       "package": "com.nearu.app"
+    },
+    "web": {
+      "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
       "expo-router",

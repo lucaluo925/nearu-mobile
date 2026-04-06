@@ -6,8 +6,9 @@
 import React, { useState, useEffect } from 'react'
 import {
   View, Text, ScrollView, Image, TouchableOpacity,
-  StyleSheet, Linking, ActivityIndicator, SafeAreaView,
+  StyleSheet, Linking, ActivityIndicator,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme'

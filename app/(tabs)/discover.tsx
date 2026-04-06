@@ -6,8 +6,9 @@
 import React, { useState, useMemo } from 'react'
 import {
   View, Text, FlatList, TextInput, TouchableOpacity,
-  StyleSheet, ActivityIndicator, SafeAreaView, Keyboard,
+  StyleSheet, ActivityIndicator, Keyboard,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme'
 import { useSession } from '@/hooks/useSession'
@@ -93,7 +94,7 @@ export default function DiscoverScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Search header */}
       <View style={styles.header}>
         <View style={styles.searchBar}>

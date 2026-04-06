@@ -3,11 +3,12 @@
  * Shows saved items grouped by collection with tab switcher.
  */
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  SafeAreaView, ScrollView,
+  ScrollView,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme'
@@ -26,12 +27,15 @@ export default function FavoritesScreen() {
   const [activeCollection, setActiveCollection] = useState<string>(DEFAULT_COLLECTIONS[0])
   const [itemCache, setItemCache] = useState<Record<string, Item>>({})
 
+  // Track which IDs we have already fetched to avoid re-requesting on re-render
+  const fetchedIdsRef = useRef<Set<string>>(new Set())
+
   const collectionNames = Object.keys(store.collections)
   const activeIds = store.collections[activeCollection] ?? []
 
-  // Fetch full item details for items in current collection
-  useMemo(() => {
-    const missing = activeIds.filter(id => !itemCache[id])
+  // Fetch full item details for any IDs not yet in cache
+  useEffect(() => {
+    const missing = activeIds.filter(id => !fetchedIdsRef.current.has(id))
     if (missing.length === 0) return
 
     supabase
@@ -40,12 +44,14 @@ export default function FavoritesScreen() {
       .in('id', missing)
       .then(({ data }) => {
         if (!data) return
+        for (const item of data) fetchedIdsRef.current.add(item.id)
         setItemCache(prev => {
           const next = { ...prev }
           for (const item of data) next[item.id] = item as Item
           return next
         })
       })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeIds.join(',')])
 
   const activeItems = activeIds.map(id => itemCache[id]).filter(Boolean) as Item[]
@@ -53,7 +59,7 @@ export default function FavoritesScreen() {
   // Guest: prompt to sign in
   if (isGuest) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Saved</Text>
         </View>

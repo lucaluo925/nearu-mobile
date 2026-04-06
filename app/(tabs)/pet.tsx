@@ -3,23 +3,24 @@
  * Shows the pet, XP progress, mood, and intent-based recommendations.
  */
 
-import React, { useState, useRef } from 'react'
+import React, { useState } from 'react'
 import {
   View, Text, ScrollView, TextInput, TouchableOpacity,
-  StyleSheet, SafeAreaView, FlatList, KeyboardAvoidingView, Platform,
+  StyleSheet, KeyboardAvoidingView, Platform,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/constants/theme'
 import { useSession } from '@/hooks/useSession'
 import { usePet } from '@/hooks/usePet'
-import { useItems } from '@/hooks/useItems'
 import { useFavorites } from '@/hooks/useFavorites'
 import { ItemCard } from '@/components/ItemCard'
 import { EmptyState } from '@/components/EmptyState'
 import { parseIntent, buildIntentResponse } from '@/lib/intent-parser'
 import { PET_EMOJI } from '@/lib/types'
 import type { Item } from '@/lib/types'
+import { supabase } from '@/lib/supabase'
 
 interface ChatMessage {
   id:   string
@@ -43,7 +44,7 @@ function intentScore(item: Item, tags: string[], categories: string[]): number {
 export default function PetScreen() {
   const router = useRouter()
   const { session, isGuest } = useSession()
-  const { pet, loading: petLoading } = usePet(session)
+  const { pet } = usePet(session)
   const { isFavorite, toggle } = useFavorites(session)
 
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -53,13 +54,9 @@ export default function PetScreen() {
       text: 'Hey! 🐾 Tell me what you\'re looking for — I\'ll find it for you!',
     },
   ])
-  const [input,       setInput]       = useState('')
-  const [results,     setResults]     = useState<Item[]>([])
-  const [intentMsg,   setIntentMsg]   = useState<string | null>(null)
-  const [searching,   setSearching]   = useState(false)
-  const [filters,     setFilters]     = useState({})
-
-  const { items: allItems } = useItems({ limit: 100, ...filters })
+  const [input,     setInput]     = useState('')
+  const [results,   setResults]   = useState<Item[]>([])
+  const [searching, setSearching] = useState(false)
 
   const emoji = pet?.pet_type ? (PET_EMOJI[pet.pet_type as keyof typeof PET_EMOJI] ?? '🐶') : '🐶'
 
@@ -67,42 +64,34 @@ export default function PetScreen() {
     const q = input.trim()
     if (!q) return
 
-    const userMsg: ChatMessage = {
-      id:   Date.now().toString(),
-      role: 'user',
-      text: q,
-    }
+    const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', text: q }
     setMessages(prev => [...prev, userMsg])
     setInput('')
     setSearching(true)
 
-    // Parse and apply intent
+    // Parse intent from natural language
     const intent = parseIntent(q)
 
-    // Update filters for the useItems hook
-    const newFilters: Record<string, unknown> = {}
-    if (intent.categories.length > 0) newFilters.category = intent.categories[0]
-    if (intent.tags.length > 0)       newFilters.tags = intent.tags
-    if (intent.time)                  newFilters.time = intent.time
-    setFilters(newFilters)
+    // Fetch fresh items directly from Supabase — avoids stale hook state
+    let dbQuery = supabase.from('items').select('*').limit(100)
+    if (intent.categories.length > 0) {
+      dbQuery = dbQuery.eq('category', intent.categories[0])
+    }
+    const { data } = await dbQuery
+    const fetched = (data ?? []) as Item[]
 
-    // Score current items against intent
-    const scored = [...allItems]
+    // Score and rank by intent match
+    const scored = fetched
       .map(item => ({ item, score: intentScore(item, intent.tags, intent.categories) }))
       .sort((a, b) => b.score - a.score)
       .slice(0, 10)
       .map(s => s.item)
 
     const msg = buildIntentResponse(intent, scored.length)
-    setIntentMsg(msg)
     setResults(scored)
     setSearching(false)
 
-    const assistantMsg: ChatMessage = {
-      id:   (Date.now() + 1).toString(),
-      role: 'assistant',
-      text: msg,
-    }
+    const assistantMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: 'assistant', text: msg }
     setMessages(prev => [...prev, assistantMsg])
   }
 
@@ -113,7 +102,7 @@ export default function PetScreen() {
 
   if (isGuest) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Pet Assistant</Text>
         </View>

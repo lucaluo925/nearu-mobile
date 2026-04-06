@@ -1,14 +1,16 @@
 /**
  * useFavorites — favorites state for the NearU mobile app.
  *
- * For logged-in users: reads/writes to Supabase user_favorites table (RLS).
- * For guests: lightweight in-memory store (not persisted — favorites require login).
+ * Routes all reads and writes through the deployed NearU web API
+ * (/api/user/favorites) using Bearer token auth — exactly like usePet and
+ * usePoints. The web API handles the underlying Supabase tables, RLS, and
+ * graceful degradation when the migration hasn't been run yet.
  *
- * Collection structure mirrors the web app's FavoritesStore exactly.
+ * For guests: lightweight in-memory store (no API calls, no persistence).
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { supabase } from '@/lib/supabase'
+import { apiFetch } from '@/lib/supabase'
 import type { Session } from '@supabase/supabase-js'
 
 export const DEFAULT_COLLECTIONS = ['Want to try', 'This week', 'Date ideas'] as const
@@ -31,7 +33,7 @@ export function useFavorites(session: Session | null) {
 
   const userId = session?.user?.id ?? null
 
-  // ── Load from Supabase when session is available ──────────────────────────
+  // ── Load from web API when session is available ───────────────────────────
   useEffect(() => {
     if (!userId) {
       setStore(emptyStore())
@@ -40,38 +42,42 @@ export function useFavorites(session: Session | null) {
     }
 
     setLoading(true)
-    Promise.all([
-      supabase
-        .from('user_favorites')
-        .select('item_id, collection_name')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: true }),
-      supabase
-        .from('user_collections')
-        .select('name')
-        .eq('user_id', userId),
-    ]).then(([favResult, colResult]) => {
-      const built = emptyStore()
-
-      for (const col of (colResult.data ?? [])) {
-        if (!built.collections[col.name]) built.collections[col.name] = []
-      }
-
-      for (const row of (favResult.data ?? [])) {
-        if (typeof row.item_id !== 'string') continue
-        const col = row.collection_name ?? DEFAULT_COLLECTIONS[0]
-        if (!built.collections[col]) built.collections[col] = []
-        built.collections[col].push(row.item_id)
-        built.itemCollections[row.item_id] = col
-      }
-
-      setStore(built)
-    }).catch(() => {
-      // Silently fall back to empty store on error
-    }).finally(() => {
-      setLoading(false)
-      setHydrated(true)
-    })
+    apiFetch('/api/user/favorites')
+      .then(async (r) => {
+        if (r.ok) {
+          const data = await r.json()
+          // Normalize: ensure all collection arrays contain only strings
+          if (data && typeof data === 'object' && data.collections) {
+            const collections = data.collections as Record<string, string[]>
+            for (const key of Object.keys(collections)) {
+              collections[key] = (collections[key] ?? []).filter(
+                (v: unknown) => typeof v === 'string',
+              )
+            }
+            // Ensure default collections always exist
+            for (const c of DEFAULT_COLLECTIONS) {
+              if (!collections[c]) collections[c] = []
+            }
+            setStore({
+              collections,
+              itemCollections: data.itemCollections ?? {},
+            })
+          } else {
+            setStore(emptyStore())
+          }
+        } else {
+          // 404 = tables not created yet; 401 = session expired — both: empty store
+          setStore(emptyStore())
+        }
+      })
+      .catch(() => {
+        // Network error — show empty store rather than crashing
+        setStore(emptyStore())
+      })
+      .finally(() => {
+        setLoading(false)
+        setHydrated(true)
+      })
   }, [userId])
 
   // ── Derived ───────────────────────────────────────────────────────────────
@@ -91,6 +97,7 @@ export function useFavorites(session: Session | null) {
       if (!userId) return // guests cannot save favorites
 
       const current = store.itemCollections[id]
+      const isRemoving = current === collection
 
       // Optimistic update
       setStore((prev) => {
@@ -101,36 +108,42 @@ export function useFavorites(session: Session | null) {
         if (!next.collections[collection]) next.collections[collection] = []
 
         if (current) {
-          next.collections[current] = (next.collections[current] ?? []).filter(i => i !== id)
+          // Remove from current collection
+          next.collections[current] = (next.collections[current] ?? []).filter(
+            (i) => i !== id,
+          )
           delete next.itemCollections[id]
+
+          // If moving to a different collection, add there
           if (current !== collection) {
-            next.collections[collection] = [...(next.collections[collection] ?? []), id]
+            next.collections[collection] = [
+              ...(next.collections[collection] ?? []),
+              id,
+            ]
             next.itemCollections[id] = collection
           }
         } else {
-          next.collections[collection] = [...(next.collections[collection] ?? []), id]
+          // Add to collection
+          next.collections[collection] = [
+            ...(next.collections[collection] ?? []),
+            id,
+          ]
           next.itemCollections[id] = collection
         }
         return next
       })
 
-      // Persist to Supabase
-      if (current === collection) {
-        // Remove
-        await supabase
-          .from('user_favorites')
-          .delete()
-          .eq('user_id', userId)
-          .eq('item_id', id)
-      } else {
-        // Add or move (upsert handles both via UNIQUE constraint)
-        await supabase
-          .from('user_favorites')
-          .upsert(
-            { user_id: userId, item_id: id, collection_name: collection },
-            { onConflict: 'user_id,item_id' },
-          )
-      }
+      // Persist via web API (fire-and-forget — optimistic update already applied)
+      const body = isRemoving
+        ? { action: 'remove', item_id: id }
+        : { action: 'add',    item_id: id, collection_name: collection }
+
+      apiFetch('/api/user/favorites', {
+        method: 'POST',
+        body:   JSON.stringify(body),
+      }).catch(() => {
+        // Network error — optimistic update stays; will resync on next load
+      })
     },
     [userId, store.itemCollections],
   )
