@@ -8,8 +8,8 @@ import { apiFetch } from '@/lib/supabase'
 import type { Session } from '@supabase/supabase-js'
 
 export interface PointsState {
-  current_points: number
-  total_earned:   number
+  current_points:      number
+  total_points_earned: number
 }
 
 export function usePoints(session: Session | null) {

@@ -23,41 +23,78 @@ const SecureStoreAdapter = {
 
 // ── Client ────────────────────────────────────────────────────────────────────
 
-const supabaseUrl  = process.env.EXPO_PUBLIC_SUPABASE_URL!
-const supabaseAnon = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl  = process.env.EXPO_PUBLIC_SUPABASE_URL  ?? ''
+const supabaseAnon = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? ''
+
+if (!supabaseUrl || !supabaseAnon) {
+  console.warn('[NearU] Supabase env vars not set — check EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in .env.local')
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnon, {
   auth: {
-    storage:           SecureStoreAdapter,
-    autoRefreshToken:  true,
-    persistSession:    true,
+    storage:            SecureStoreAdapter,
+    autoRefreshToken:   true,
+    persistSession:     true,
     detectSessionInUrl: false,
   },
 })
 
 // ── Helper: get current bearer token ─────────────────────────────────────────
-// Use this when calling the NearU web API from the mobile app.
 
 export async function getBearerToken(): Promise<string | null> {
-  const { data: { session } } = await supabase.auth.getSession()
-  return session?.access_token ?? null
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    return session?.access_token ?? null
+  } catch {
+    return null
+  }
 }
 
 // ── Helper: authenticated fetch to the NearU web API ─────────────────────────
+// Falls back gracefully when EXPO_PUBLIC_API_URL is not configured.
 
 const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/$/, '')
+
+const API_TIMEOUT_MS = 12_000
 
 export async function apiFetch(
   path: string,
   options: RequestInit = {},
 ): Promise<Response> {
+  // Guard: API URL required for web-API calls (pet XP, points)
+  if (!API_URL) {
+    console.warn(`[NearU] apiFetch(${path}) skipped — EXPO_PUBLIC_API_URL not configured`)
+    return new Response(
+      JSON.stringify({ error: 'API URL not configured', skipped: true }),
+      { status: 503, headers: { 'Content-Type': 'application/json' } },
+    )
+  }
+
   const token = await getBearerToken()
-  return fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  })
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS)
+
+  try {
+    const response = await fetch(`${API_URL}${path}`, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(options.headers ?? {}),
+      },
+    })
+    clearTimeout(timer)
+    return response
+  } catch (e) {
+    clearTimeout(timer)
+    if ((e as Error)?.name === 'AbortError') {
+      return new Response(
+        JSON.stringify({ error: 'Request timed out' }),
+        { status: 408, headers: { 'Content-Type': 'application/json' } },
+      )
+    }
+    throw e
+  }
 }

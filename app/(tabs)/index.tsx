@@ -6,11 +6,12 @@
 import React, { useState, useMemo } from 'react'
 import {
   View, Text, ScrollView, FlatList, TouchableOpacity,
-  TextInput, StyleSheet, RefreshControl, SafeAreaView,
+  StyleSheet, RefreshControl,
 } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/constants/theme'
+import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme'
 import { useSession } from '@/hooks/useSession'
 import { useItems } from '@/hooks/useItems'
 import { useFavorites } from '@/hooks/useFavorites'
@@ -70,7 +71,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <View>
