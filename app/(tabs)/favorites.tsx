@@ -3,12 +3,13 @@
  * Shows saved items grouped by collection with tab switcher.
  */
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   SafeAreaView, ScrollView,
 } from 'react-native'
 import { useRouter } from 'expo-router'
+import { useFocusEffect } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme'
 import { useSession } from '@/hooks/useSession'
@@ -21,7 +22,14 @@ import type { Item } from '@/lib/types'
 export default function FavoritesScreen() {
   const router = useRouter()
   const { session, isGuest } = useSession()
-  const { store, isFavorite, toggle, hydrated } = useFavorites(session)
+  const { store, isFavorite, toggle, hydrated, reload } = useFavorites(session)
+
+  // Re-fetch from Supabase each time this tab is focused so saves made on
+  // the Home or Detail screens (which own separate useFavorites instances)
+  // are reflected here without a full restart.
+  useFocusEffect(
+    useCallback(() => { reload() }, [reload])
+  )
 
   const [activeCollection, setActiveCollection] = useState<string>(DEFAULT_COLLECTIONS[0])
   const [itemCache, setItemCache] = useState<Record<string, Item>>({})

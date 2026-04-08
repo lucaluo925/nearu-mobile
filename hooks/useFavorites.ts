@@ -5,6 +5,10 @@
  * For guests: lightweight in-memory store (not persisted — favorites require login).
  *
  * Collection structure mirrors the web app's FavoritesStore exactly.
+ *
+ * Important: each screen that calls useFavorites gets its own instance.
+ * Call reload() via useFocusEffect on the Saved screen so it stays fresh
+ * after saves made from the Home or Detail screens.
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
@@ -31,8 +35,11 @@ export function useFavorites(session: Session | null) {
 
   const userId = session?.user?.id ?? null
 
-  // ── Load from Supabase when session is available ──────────────────────────
-  useEffect(() => {
+  // ── Load from Supabase ────────────────────────────────────────────────────
+  // Exposed as `reload` so screens can call it via useFocusEffect to stay
+  // in sync with saves made on other screens.
+
+  const reload = useCallback(async () => {
     if (!userId) {
       setStore(emptyStore())
       setHydrated(true)
@@ -40,17 +47,19 @@ export function useFavorites(session: Session | null) {
     }
 
     setLoading(true)
-    Promise.all([
-      supabase
-        .from('user_favorites')
-        .select('item_id, collection_name')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: true }),
-      supabase
-        .from('user_collections')
-        .select('name')
-        .eq('user_id', userId),
-    ]).then(([favResult, colResult]) => {
+    try {
+      const [favResult, colResult] = await Promise.all([
+        supabase
+          .from('user_favorites')
+          .select('item_id, collection_name')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: true }),
+        supabase
+          .from('user_collections')
+          .select('name')
+          .eq('user_id', userId),
+      ])
+
       const built = emptyStore()
 
       for (const col of (colResult.data ?? [])) {
@@ -66,13 +75,15 @@ export function useFavorites(session: Session | null) {
       }
 
       setStore(built)
-    }).catch(() => {
-      // Silently fall back to empty store on error
-    }).finally(() => {
+    } catch {
+      // Network error — keep current store; user can pull-to-refresh
+    } finally {
       setLoading(false)
       setHydrated(true)
-    })
+    }
   }, [userId])
+
+  useEffect(() => { reload() }, [reload])
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const favorites = useMemo(
@@ -86,11 +97,15 @@ export function useFavorites(session: Session | null) {
   )
 
   // ── toggle ────────────────────────────────────────────────────────────────
+  // Optimistic update with rollback on Supabase error.
   const toggle = useCallback(
     async (id: string, collection = DEFAULT_COLLECTIONS[0]) => {
       if (!userId) return // guests cannot save favorites
 
       const current = store.itemCollections[id]
+
+      // Snapshot before optimistic update so we can roll back on error
+      const snapshot = store
 
       // Optimistic update
       setStore((prev) => {
@@ -114,26 +129,26 @@ export function useFavorites(session: Session | null) {
         return next
       })
 
-      // Persist to Supabase
+      // Persist to Supabase — rollback optimistic update on error
       if (current === collection) {
-        // Remove
-        await supabase
+        const { error } = await supabase
           .from('user_favorites')
           .delete()
           .eq('user_id', userId)
           .eq('item_id', id)
+        if (error) setStore(snapshot)
       } else {
-        // Add or move (upsert handles both via UNIQUE constraint)
-        await supabase
+        const { error } = await supabase
           .from('user_favorites')
           .upsert(
             { user_id: userId, item_id: id, collection_name: collection },
             { onConflict: 'user_id,item_id' },
           )
+        if (error) setStore(snapshot)
       }
     },
-    [userId, store.itemCollections],
+    [userId, store],
   )
 
-  return { store, favorites, loading, hydrated, isFavorite, toggle }
+  return { store, favorites, loading, hydrated, isFavorite, toggle, reload }
 }
