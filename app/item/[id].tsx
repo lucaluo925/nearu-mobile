@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme'
-import { useSession } from '@/hooks/useSession'
+import { useSessionContext } from '@/lib/SessionContext'
 import { useFavorites } from '@/hooks/useFavorites'
 import { supabase } from '@/lib/supabase'
 import type { Item } from '@/lib/types'
@@ -38,7 +38,7 @@ function formatTime(iso: string): string {
 
 export default function ItemDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
-  const { session, isGuest } = useSession()
+  const { session, isGuest } = useSessionContext()
   const { isFavorite, toggle } = useFavorites(session)
 
   const [item,    setItem]    = useState<Item | null>(null)

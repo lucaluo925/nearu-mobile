@@ -6,13 +6,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  SafeAreaView, ScrollView,
+  SafeAreaView, ScrollView, ActivityIndicator,
 } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useFocusEffect } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme'
-import { useSession } from '@/hooks/useSession'
+import { useSessionContext } from '@/lib/SessionContext'
 import { useFavorites, DEFAULT_COLLECTIONS } from '@/hooks/useFavorites'
 import { ItemCard } from '@/components/ItemCard'
 import { EmptyState } from '@/components/EmptyState'
@@ -21,7 +21,7 @@ import type { Item } from '@/lib/types'
 
 export default function FavoritesScreen() {
   const router = useRouter()
-  const { session, isGuest } = useSession()
+  const { session, isGuest, loading: sessionLoading } = useSessionContext()
   const { store, isFavorite, toggle, hydrated, reload } = useFavorites(session)
 
   // Re-fetch from Supabase each time this tab is focused so saves made on
@@ -58,6 +58,15 @@ export default function FavoritesScreen() {
   }, [activeIds.join(',')])
 
   const activeItems = activeIds.map(id => itemCache[id]).filter(Boolean) as Item[]
+
+  // Show spinner while session is being read from SecureStore on cold start
+  if (sessionLoading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <ActivityIndicator color={Colors.amber} style={{ flex: 1 }} />
+      </SafeAreaView>
+    )
+  }
 
   // Guest: prompt to sign in
   if (isGuest) {

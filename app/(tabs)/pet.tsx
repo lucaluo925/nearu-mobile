@@ -7,11 +7,12 @@ import React, { useState, useRef } from 'react'
 import {
   View, Text, ScrollView, TextInput, TouchableOpacity,
   StyleSheet, SafeAreaView, FlatList, KeyboardAvoidingView, Platform,
+  ActivityIndicator,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/constants/theme'
-import { useSession } from '@/hooks/useSession'
+import { useSessionContext } from '@/lib/SessionContext'
 import { usePet } from '@/hooks/usePet'
 import { useItems } from '@/hooks/useItems'
 import { useFavorites } from '@/hooks/useFavorites'
@@ -42,7 +43,7 @@ function intentScore(item: Item, tags: string[], categories: string[]): number {
 
 export default function PetScreen() {
   const router = useRouter()
-  const { session, isGuest } = useSession()
+  const { session, isGuest, loading: sessionLoading } = useSessionContext()
   const { pet, loading: petLoading } = usePet(session)
   const { isFavorite, toggle } = useFavorites(session)
 
@@ -102,6 +103,14 @@ export default function PetScreen() {
     'chill spot tonight', 'free food near campus',
     'something social', 'coffee and study',
   ]
+
+  if (sessionLoading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <ActivityIndicator color={Colors.amber} style={{ flex: 1 }} />
+      </SafeAreaView>
+    )
+  }
 
   if (isGuest) {
     return (

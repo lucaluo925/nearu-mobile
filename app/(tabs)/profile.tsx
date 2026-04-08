@@ -6,12 +6,12 @@
 import React from 'react'
 import {
   View, Text, TouchableOpacity, ScrollView,
-  StyleSheet, SafeAreaView, Alert,
+  StyleSheet, SafeAreaView, Alert, ActivityIndicator,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/constants/theme'
-import { useSession } from '@/hooks/useSession'
+import { useSessionContext } from '@/lib/SessionContext'
 import { usePet } from '@/hooks/usePet'
 import { usePoints } from '@/hooks/usePoints'
 import { supabase } from '@/lib/supabase'
@@ -49,7 +49,7 @@ function MenuRow({
 
 export default function ProfileScreen() {
   const router = useRouter()
-  const { session, isGuest, user } = useSession()
+  const { session, isGuest, user, loading: sessionLoading } = useSessionContext()
   const { pet } = usePet(session)
   const { points } = usePoints(session)
 
@@ -64,6 +64,15 @@ export default function ProfileScreen() {
         onPress: async () => { await supabase.auth.signOut() },
       },
     ])
+  }
+
+  // Spinner while session hydrates from SecureStore
+  if (sessionLoading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <ActivityIndicator color={Colors.amber} style={{ flex: 1 }} />
+      </SafeAreaView>
+    )
   }
 
   // Guest view

@@ -10,7 +10,7 @@ import {
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme'
-import { useSession } from '@/hooks/useSession'
+import { useSessionContext } from '@/lib/SessionContext'
 import { useItems } from '@/hooks/useItems'
 import { useFavorites } from '@/hooks/useFavorites'
 import { ItemCard } from '@/components/ItemCard'
@@ -40,7 +40,7 @@ function intentScore(item: Item, tags: string[], categories: string[]): number {
 
 export default function DiscoverScreen() {
   const router = useRouter()
-  const { session, isGuest } = useSession()
+  const { session, isGuest } = useSessionContext()
   const [query,    setQuery]    = useState('')
   const [submitted, setSubmitted] = useState('')
   const [category, setCategory] = useState<string | undefined>(undefined)

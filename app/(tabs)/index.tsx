@@ -11,7 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/constants/theme'
-import { useSession } from '@/hooks/useSession'
+import { useSessionContext } from '@/lib/SessionContext'
 import { useItems } from '@/hooks/useItems'
 import { useFavorites } from '@/hooks/useFavorites'
 import { usePet } from '@/hooks/usePet'
@@ -33,7 +33,7 @@ const CATEGORIES = ['food', 'events', 'outdoor', 'study', 'campus']
 
 export default function HomeScreen() {
   const router   = useRouter()
-  const { session, isGuest } = useSession()
+  const { session, isGuest } = useSessionContext()
 
   const [timeFilter, setTimeFilter] = useState<TimeFilter>(null)
   const [category,   setCategory]   = useState<string | undefined>(undefined)
