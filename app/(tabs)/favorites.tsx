@@ -3,7 +3,7 @@
  * Shows saved items grouped by collection with tab switcher.
  */
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
   SafeAreaView, ScrollView,
@@ -30,7 +30,7 @@ export default function FavoritesScreen() {
   const activeIds = store.collections[activeCollection] ?? []
 
   // Fetch full item details for items in current collection
-  useMemo(() => {
+  useEffect(() => {
     const missing = activeIds.filter(id => !itemCache[id])
     if (missing.length === 0) return
 
@@ -46,6 +46,7 @@ export default function FavoritesScreen() {
           return next
         })
       })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeIds.join(',')])
 
   const activeItems = activeIds.map(id => itemCache[id]).filter(Boolean) as Item[]

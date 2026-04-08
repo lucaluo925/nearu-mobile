@@ -57,9 +57,8 @@ export default function PetScreen() {
   const [results,     setResults]     = useState<Item[]>([])
   const [intentMsg,   setIntentMsg]   = useState<string | null>(null)
   const [searching,   setSearching]   = useState(false)
-  const [filters,     setFilters]     = useState({})
 
-  const { items: allItems } = useItems({ limit: 100, ...filters })
+  const { items: allItems } = useItems({ limit: 100 })
 
   const emoji = pet?.pet_type ? (PET_EMOJI[pet.pet_type as keyof typeof PET_EMOJI] ?? '🐶') : '🐶'
 
@@ -76,15 +75,8 @@ export default function PetScreen() {
     setInput('')
     setSearching(true)
 
-    // Parse and apply intent
+    // Parse intent and score current items in-memory — no re-fetch needed
     const intent = parseIntent(q)
-
-    // Update filters for the useItems hook
-    const newFilters: Record<string, unknown> = {}
-    if (intent.categories.length > 0) newFilters.category = intent.categories[0]
-    if (intent.tags.length > 0)       newFilters.tags = intent.tags
-    if (intent.time)                  newFilters.time = intent.time
-    setFilters(newFilters)
 
     // Score current items against intent
     const scored = [...allItems]
