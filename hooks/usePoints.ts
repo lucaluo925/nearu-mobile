@@ -7,9 +7,18 @@ import { useState, useEffect, useCallback } from 'react'
 import { apiFetch } from '@/lib/supabase'
 import type { Session } from '@supabase/supabase-js'
 
+export interface PointEvent {
+  id:         string
+  type:       string
+  points:     number
+  label:      string
+  created_at: string
+}
+
 export interface PointsState {
   current_points:      number
   total_points_earned: number
+  history:             PointEvent[]
 }
 
 export function usePoints(session: Session | null) {
@@ -23,7 +32,14 @@ export function usePoints(session: Session | null) {
     setLoading(true)
     try {
       const r = await apiFetch('/api/points')
-      if (r.ok) setPoints(await r.json())
+      if (r.ok) {
+        const data = await r.json()
+        setPoints({
+          current_points:      data.current_points      ?? 0,
+          total_points_earned: data.total_points_earned ?? 0,
+          history:             data.history             ?? [],
+        })
+      }
     } catch {}
     finally { setLoading(false) }
   }, [userId])

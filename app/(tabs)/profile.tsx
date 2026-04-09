@@ -175,6 +175,11 @@ export default function ProfileScreen() {
             onPress={() => router.push('/(tabs)/pet')}
           />
           <MenuRow
+            icon="gift-outline"
+            label="Rewards Shop"
+            onPress={() => router.push('/shop')}
+          />
+          <MenuRow
             icon="bookmark-outline"
             label="Saved Places"
             onPress={() => router.push('/(tabs)/favorites')}

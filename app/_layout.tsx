@@ -32,6 +32,17 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
+          name="shop"
+          options={{
+            headerShown:     true,
+            headerTitle:     'Rewards Shop',
+            headerBackTitle: 'Back',
+            headerTintColor: '#111827',
+            headerStyle:     { backgroundColor: '#F9FAFB' },
+            headerShadowVisible: false,
+          }}
+        />
+        <Stack.Screen
           name="auth/login"
           options={{
             headerShown:     true,

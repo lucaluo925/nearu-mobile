@@ -81,6 +81,81 @@ export const PET_EMOJI: Record<PetType, string> = {
   tiger:  '🐯',
 }
 
+export const PET_LABEL: Record<PetType, string> = {
+  dog:    'Dog',
+  cat:    'Cat',
+  bird:   'Bird',
+  fox:    'Fox',
+  bunny:  'Bunny',
+  frog:   'Frog',
+  panda:  'Panda',
+  monkey: 'Monkey',
+  tiger:  'Tiger',
+}
+
+/** Direct-unlock cost per pet. Dog is free (starter). */
+export const PET_PRICES: Record<PetType, number> = {
+  dog:    0,
+  cat:    50,
+  bird:   70,
+  fox:    100,
+  bunny:  120,
+  frog:   150,
+  panda:  180,
+  monkey: 220,
+  tiger:  260,
+}
+
+export type PetRarity = 'common' | 'rare' | 'epic' | 'legendary'
+
+export const PET_RARITY: Record<PetType, PetRarity> = {
+  dog:    'common',
+  bunny:  'common',
+  bird:   'common',
+  cat:    'rare',
+  fox:    'rare',
+  frog:   'rare',
+  panda:  'epic',
+  monkey: 'epic',
+  tiger:  'legendary',
+}
+
+export const RARITY_LABEL: Record<PetRarity, string> = {
+  common:    'Common',
+  rare:      'Rare',
+  epic:      'Epic',
+  legendary: 'Legendary',
+}
+
+export const RARITY_COLORS: Record<PetRarity, { bg: string; text: string; border: string }> = {
+  common:    { bg: '#F3F4F6', text: '#6B7280', border: '#E5E7EB' },
+  rare:      { bg: '#EFF6FF', text: '#3B82F6', border: '#BFDBFE' },
+  epic:      { bg: '#F5F3FF', text: '#8B5CF6', border: '#DDD6FE' },
+  legendary: { bg: '#FFFBEB', text: '#D97706', border: '#FDE68A' },
+}
+
+/**
+ * Client-side random draw for egg hatching.
+ * Probabilities: Common 65% · Rare 25% · Epic 8% · Legendary 2%
+ * The drawn type is sent to the server which confirms and stores the result.
+ */
+export function drawHatch(): PetType {
+  const n = Math.random() * 100
+  if (n < 65) {
+    const pool: PetType[] = ['dog', 'bunny', 'bird']
+    return pool[Math.floor(Math.random() * pool.length)]
+  }
+  if (n < 90) {
+    const pool: PetType[] = ['cat', 'fox', 'frog']
+    return pool[Math.floor(Math.random() * pool.length)]
+  }
+  if (n < 98) {
+    const pool: PetType[] = ['panda', 'monkey']
+    return pool[Math.floor(Math.random() * pool.length)]
+  }
+  return 'tiger'
+}
+
 export type PetMood = 'idle' | 'happy' | 'excited'
 export const EGG_PRICE = 40
 
