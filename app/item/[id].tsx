@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { Colors, Spacing, Radius, FontSize, FontWeight } from '@/constants/theme'
 import { useSessionContext } from '@/lib/SessionContext'
 import { useFavorites } from '@/hooks/useFavorites'
-import { supabase } from '@/lib/supabase'
+import { supabase, apiFetch } from '@/lib/supabase'
 import type { Item } from '@/lib/types'
 import { CATEGORY_EMOJI } from '@/lib/types'
 
@@ -187,7 +187,11 @@ export default function ItemDetailScreen() {
             {hasLink && (
               <TouchableOpacity
                 style={[styles.actionBtn, styles.actionBtnPrimary]}
-                onPress={() => Linking.openURL(item.external_link!)}
+                onPress={() => {
+                  // Award XP for exploring an external link — fire-and-forget
+                  if (!isGuest) void apiFetch('/api/pet/xp', { method: 'POST', body: JSON.stringify({ action: 'share' }) })
+                  Linking.openURL(item.external_link!)
+                }}
               >
                 <Ionicons name="open-outline" size={20} color={Colors.white} />
                 <Text style={[styles.actionText, { color: Colors.white }]}>More Info</Text>

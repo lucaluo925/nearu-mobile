@@ -12,7 +12,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase, apiFetch } from '@/lib/supabase'
 import type { Session } from '@supabase/supabase-js'
 
 export const DEFAULT_COLLECTIONS = ['Want to try', 'This week', 'Date ideas'] as const
@@ -144,7 +144,19 @@ export function useFavorites(session: Session | null) {
             { user_id: userId, item_id: id, collection_name: collection },
             { onConflict: 'user_id,item_id' },
           )
-        if (error) setStore(snapshot)
+        if (error) {
+          setStore(snapshot)
+        } else {
+          // Award points + pet XP for saving — fire-and-forget, don't block UI
+          void apiFetch('/api/points/award', {
+            method: 'POST',
+            body:   JSON.stringify({ type: 'save_item', metadata: { item_id: id } }),
+          })
+          void apiFetch('/api/pet/xp', {
+            method: 'POST',
+            body:   JSON.stringify({ action: 'save_item' }),
+          })
+        }
       }
     },
     [userId, store],

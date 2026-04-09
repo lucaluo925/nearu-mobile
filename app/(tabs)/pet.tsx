@@ -44,7 +44,7 @@ function intentScore(item: Item, tags: string[], categories: string[]): number {
 export default function PetScreen() {
   const router = useRouter()
   const { session, isGuest, loading: sessionLoading } = useSessionContext()
-  const { pet, loading: petLoading } = usePet(session)
+  const { pet, loading: petLoading, awardXP } = usePet(session)
   const { isFavorite, toggle } = useFavorites(session)
 
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -90,6 +90,9 @@ export default function PetScreen() {
     setIntentMsg(msg)
     setResults(scored)
     setSearching(false)
+
+    // Award XP for using the pet assistant — fire-and-forget
+    void awardXP('share')
 
     const assistantMsg: ChatMessage = {
       id:   (Date.now() + 1).toString(),
