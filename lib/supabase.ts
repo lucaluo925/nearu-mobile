@@ -52,7 +52,16 @@ export async function apiFetch(
   options: RequestInit = {},
 ): Promise<Response> {
   const token = await getBearerToken()
-  return fetch(`${API_URL}${path}`, {
+
+  if (__DEV__) {
+    const method = (options.method ?? 'GET').toUpperCase()
+    if (!API_URL) {
+      console.warn('[apiFetch] ⚠️  EXPO_PUBLIC_API_URL is empty — all API calls will fail!')
+    }
+    console.log(`[apiFetch] → ${method} ${API_URL}${path}  token:${token ? '✓' : '✗ MISSING'}`)
+  }
+
+  const response = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -60,4 +69,17 @@ export async function apiFetch(
       ...options.headers,
     },
   })
+
+  if (__DEV__) {
+    const ok = response.ok ? '✓' : '✗'
+    console.log(`[apiFetch] ← ${ok} ${response.status} ${API_URL}${path}`)
+    if (!response.ok) {
+      // Clone so the caller can still read the body
+      response.clone().text().then(body =>
+        console.log(`[apiFetch]   body: ${body}`)
+      )
+    }
+  }
+
+  return response
 }

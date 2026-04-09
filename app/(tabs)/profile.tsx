@@ -3,13 +3,14 @@
  * Shows auth state, points, pet level, and account options.
  */
 
-import React from 'react'
+import React, { useCallback } from 'react'
 import {
   View, Text, TouchableOpacity, ScrollView,
   StyleSheet, SafeAreaView, Alert, ActivityIndicator,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
+import { useFocusEffect } from '@react-navigation/native'
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/constants/theme'
 import { useSessionContext } from '@/lib/SessionContext'
 import { usePet } from '@/hooks/usePet'
@@ -50,8 +51,17 @@ function MenuRow({
 export default function ProfileScreen() {
   const router = useRouter()
   const { session, isGuest, user, loading: sessionLoading } = useSessionContext()
-  const { pet } = usePet(session)
-  const { points } = usePoints(session)
+  const { pet, refresh: refreshPet }       = usePet(session)
+  const { points, refresh: refreshPoints } = usePoints(session)
+
+  // Refresh points and pet XP every time this tab comes into focus so the
+  // displayed balance reflects awards earned on other screens since last visit.
+  useFocusEffect(
+    useCallback(() => {
+      refreshPoints()
+      refreshPet()
+    }, [refreshPoints, refreshPet]),
+  )
 
   const emoji    = pet?.pet_type ? (PET_EMOJI[pet.pet_type as keyof typeof PET_EMOJI] ?? '🐶') : '🐶'
   const initials = user?.email?.charAt(0).toUpperCase() ?? '?'

@@ -147,7 +147,8 @@ export function useFavorites(session: Session | null) {
         if (error) {
           setStore(snapshot)
         } else {
-          // Award points + pet XP for saving — fire-and-forget, don't block UI
+          // Award points + pet XP for saving — fire-and-forget, never block UI.
+          // Callers (Profile, Shop) refresh their balance via useFocusEffect.
           void apiFetch('/api/points/award', {
             method: 'POST',
             body:   JSON.stringify({ type: 'save_item', metadata: { item_id: id } }),

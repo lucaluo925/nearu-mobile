@@ -9,13 +9,14 @@
  *   4. Point History    — recent earn/spend events
  */
 
-import React, { useRef, useState } from 'react'
+import React, { useCallback, useRef, useState } from 'react'
 import {
   View, Text, ScrollView, TouchableOpacity, Modal, Animated,
   StyleSheet, Alert, ActivityIndicator, Dimensions,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
+import { useFocusEffect } from '@react-navigation/native'
 import { Colors, Spacing, Radius, FontSize, FontWeight, Shadow } from '@/constants/theme'
 import { useSessionContext } from '@/lib/SessionContext'
 import { usePet } from '@/hooks/usePet'
@@ -76,6 +77,15 @@ export default function ShopScreen() {
   const [hatchResult,  setHatchResult]    = useState<PetType | null>(null)
   const shakeAnim  = useRef(new Animated.Value(0)).current
   const revealAnim = useRef(new Animated.Value(0)).current
+
+  // Refresh points + pet state whenever this screen comes into focus so that
+  // awards earned elsewhere (favorites, pet chat) are always visible here.
+  useFocusEffect(
+    useCallback(() => {
+      refreshPoints()
+      refreshPet()
+    }, [refreshPoints, refreshPet]),
+  )
 
   // ── Guard ─────────────────────────────────────────────────────────────────
   if (isGuest) {
